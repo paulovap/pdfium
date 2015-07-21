@@ -425,7 +425,7 @@ CPDF_Font* CPDF_Font::CreateFontF(CPDF_Document* pDoc, CPDF_Dictionary* pFontDic
     CPDF_Font* pFont;
     if (type == FX_BSTRC("TrueType")) {
         {
-#if _FXM_PLATFORM_  == _FXM_PLATFORM_WINDOWS_ || _FXM_PLATFORM_ == _FXM_PLATFORM_LINUX_ || _FXM_PLATFORM_ == _FXM_PLATFORM_ANDROID_ || _FXM_PLATFORM_ == _FXM_PLATFORM_APPLE_
+#if _FXM_PLATFORM_  == _FXM_PLATFORM_WINDOWS_ || _FXM_PLATFORM_ == _FXM_PLATFORM_LINUX_ || _FXM_PLATFORM_ == _FXM_PLATFORM_ANDROID_ || _FXM_PLATFORM_ == _FXM_PLATFORM_APPLE_ || _FXM_PLATFORM_ == _FXM_PLATFORM_QT_
             CFX_ByteString basefont = pFontDict->GetString(FX_BSTRC("BaseFont"));
             CFX_ByteString tag = basefont.Left(4);
             int i;
