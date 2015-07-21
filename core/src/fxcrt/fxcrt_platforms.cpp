@@ -10,7 +10,8 @@
 #if (_FXM_PLATFORM_ != _FXM_PLATFORM_WINDOWS_ && \
      _FXM_PLATFORM_ != _FXM_PLATFORM_LINUX_ &&   \
      _FXM_PLATFORM_ != _FXM_PLATFORM_APPLE_ &&   \
-     _FXM_PLATFORM_ != _FXM_PLATFORM_ANDROID_)
+     _FXM_PLATFORM_ != _FXM_PLATFORM_ANDROID_ && \
+     _FXM_PLATFORM_ != _FXM_PLATFORM_QT_)
 IFXCRT_FileAccess* FXCRT_FileAccess_Create() {
   return new CFXCRT_FileAccess_CRT;
 }
