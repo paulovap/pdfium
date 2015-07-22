@@ -778,7 +778,7 @@ FX_WCHAR CPDF_CIDFont::_UnicodeFromCharCode(FX_DWORD charcode) const
             return m_pCID2UnicodeMap->UnicodeFromCID((FX_WORD)charcode);
     }
     if (!m_pCMap->IsLoaded() || m_pCID2UnicodeMap == NULL || !m_pCID2UnicodeMap->IsLoaded()) {
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_  || defined(Q_OS_WIN)
         FX_WCHAR unicode;
         int charsize = 1;
         if (charcode > 255) {
@@ -828,7 +828,7 @@ FX_DWORD CPDF_CIDFont::_CharCodeFromUnicode(FX_WCHAR unicode) const
     } else if (m_pCMap->m_Coding == CIDCODING_CID) {
         return 0;
     }
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_  || defined(Q_OS_WIN)
     uint8_t buffer[32];
     int ret = FXSYS_WideCharToMultiByte(g_CharsetCPs[m_pCMap->m_Coding], 0, &unicode, 1, (char*)buffer, 4, NULL, NULL);
     if (ret == 1) {

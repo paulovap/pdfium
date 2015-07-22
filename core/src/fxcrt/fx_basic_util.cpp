@@ -5,7 +5,7 @@
 // Original code copyright 2014 Foxit Software Inc. http://www.foxitsoftware.com
 
 #include "../../include/fxcrt/fx_basic.h"
-#if _FXM_PLATFORM_ != _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ != _FXM_PLATFORM_WINDOWS_ && !defined(Q_OS_WIN)
 #include <sys/types.h>
 #include <dirent.h>
 #else
@@ -170,7 +170,7 @@ FX_FLOAT FX_atof(const CFX_ByteStringC& strc)
     return bNegative ? -value : value;
 }
 
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ && _MSC_VER < 1900
+#if (_FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_  || defined(Q_OS_WIN)) && _MSC_VER < 1900
 void FXSYS_snprintf(char *str, size_t size, _Printf_format_string_ const char* fmt, ...)
 {
     va_list ap;
@@ -293,7 +293,7 @@ CFX_WideString FX_DecodeURI(const CFX_ByteString& bsURI)
     }
     return CFX_WideString::FromUTF8(rURI, rURI.GetLength());
 }
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
 class CFindFileData
 {
 public:
@@ -316,7 +316,7 @@ public:
 #endif
 void* FX_OpenFolder(const FX_CHAR* path)
 {
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
 #ifndef _WIN32_WCE
     CFindFileDataA* pData = new CFindFileDataA;
 #ifdef _FX_WINAPI_PARTITION_DESKTOP_
@@ -341,7 +341,7 @@ void* FX_OpenFolder(const FX_CHAR* path)
 }
 void* FX_OpenFolder(const FX_WCHAR* path)
 {
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
     CFindFileDataW* pData = new CFindFileDataW;
 #ifdef _FX_WINAPI_PARTITION_DESKTOP_
     pData->m_Handle = FindFirstFileW((CFX_WideString(path) + L"/*.*").c_str(), &pData->m_FindData);
@@ -364,7 +364,7 @@ FX_BOOL FX_GetNextFile(void* handle, CFX_ByteString& filename, FX_BOOL& bFolder)
     if (handle == NULL) {
         return FALSE;
     }
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
 #ifndef _WIN32_WCE
     CFindFileDataA* pData = (CFindFileDataA*)handle;
     if (pData->m_bEnd) {
@@ -406,7 +406,7 @@ FX_BOOL FX_GetNextFile(void* handle, CFX_WideString& filename, FX_BOOL& bFolder)
     if (handle == NULL) {
         return FALSE;
     }
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
     CFindFileDataW* pData = (CFindFileDataW*)handle;
     if (pData->m_bEnd) {
         return FALSE;
@@ -435,7 +435,7 @@ void FX_CloseFolder(void* handle)
     if (handle == NULL) {
         return;
     }
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
     CFindFileData* pData = (CFindFileData*)handle;
     FindClose(pData->m_Handle);
     delete pData;

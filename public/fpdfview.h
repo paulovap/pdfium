@@ -330,7 +330,7 @@ DLLEXPORT int STDCALL FPDF_GetPageSizeByIndex(FPDF_DOCUMENT document, int page_i
 #define FPDF_RENDER_NO_SMOOTHPATH   0x4000  // Set to disable anti-aliasing on paths.
 #define FPDF_REVERSE_BYTE_ORDER     0x10        //set whether render in a reverse Byte order, this flag only
                                                 //enable when render to a bitmap.
-#ifdef _WIN32
+#if 0 //defined(_WIN32) && !defined(Q_OS_WIN)
 // Function: FPDF_RenderPage
 //          Render contents in a page to a device (screen, bitmap, or printer).
 //          This function is only supported on Windows system.

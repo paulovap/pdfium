@@ -12,17 +12,15 @@ IFXCRT_FileAccess* FXCRT_FileAccess_Create()
 {
     return new CFXCRT_FileAccess_Qt;
 }
-void FXCRT_Qt_GetFileMode(FX_DWORD dwModes, QIODevice::OpenMode &nFlags, int32_t &nMasks)
+void FXCRT_Qt_GetFileMode(FX_DWORD dwModes, QIODevice::OpenMode &nFlags)
 {
     if (dwModes & FX_FILEMODE_ReadOnly) {
         nFlags |= QIODevice::ReadOnly;
-        nMasks = 0;
     } else {
         nFlags |= QIODevice::ReadWrite;
         if (dwModes & FX_FILEMODE_Truncate) {
             nFlags |= QIODevice::Truncate;
         }
-        nMasks = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
     }
 }
 CFXCRT_FileAccess_Qt::CFXCRT_FileAccess_Qt()
@@ -36,9 +34,8 @@ FX_BOOL CFXCRT_FileAccess_Qt::Open(const CFX_ByteStringC& fileName, FX_DWORD dwM
 {
     QString filename = QString::fromUtf8(fileName.GetCStr(), fileName.GetLength());
     m_file.setFileName(filename);
-    int32_t nMasks;
     QIODevice::OpenMode nFlags;
-    FXCRT_Qt_GetFileMode(dwMode, nFlags, nMasks);
+    FXCRT_Qt_GetFileMode(dwMode, nFlags);
     return m_file.open(nFlags);
 }
 FX_BOOL CFXCRT_FileAccess_Qt::Open(const CFX_WideStringC& fileName, FX_DWORD dwMode)
@@ -104,7 +101,7 @@ FX_BOOL CFXCRT_FileAccess_Qt::Truncate(FX_FILESIZE szFile)
 }
 FX_BOOL FX_File_Exist(const CFX_ByteStringC& fileName)
 {
-    return access(fileName.GetCStr(), F_OK) > -1;
+    return QFile::exists(QString::fromUtf8(fileName.GetCStr(), fileName.GetLength()));
 }
 FX_BOOL FX_File_Exist(const CFX_WideStringC& fileName)
 {
