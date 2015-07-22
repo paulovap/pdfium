@@ -34,7 +34,8 @@ CFXCRT_FileAccess_Qt::~CFXCRT_FileAccess_Qt()
 }
 FX_BOOL CFXCRT_FileAccess_Qt::Open(const CFX_ByteStringC& fileName, FX_DWORD dwMode)
 {
-    m_file.setFileName(QString::fromLocal8Bit(fileName.GetCStr()));
+    QString filename = QString::fromUtf8(fileName.GetCStr(), fileName.GetLength());
+    m_file.setFileName(filename);
     int32_t nMasks;
     QIODevice::OpenMode nFlags;
     FXCRT_Qt_GetFileMode(dwMode, nFlags, nMasks);
@@ -63,7 +64,7 @@ FX_FILESIZE CFXCRT_FileAccess_Qt::GetPosition() const
 FX_FILESIZE CFXCRT_FileAccess_Qt::SetPosition(FX_FILESIZE pos)
 {
     ;
-    if (m_file.seek(pos)) {
+    if (!m_file.seek(pos)) {
         return (FX_FILESIZE) - 1;
     }
     return m_file.pos();
