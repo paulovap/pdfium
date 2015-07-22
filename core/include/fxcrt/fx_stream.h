@@ -9,6 +9,10 @@
 
 #include "fx_string.h"
 
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_QT_
+#include <QtGlobal>
+#endif
+
 void* FX_OpenFolder(const FX_CHAR* path);
 void* FX_OpenFolder(const FX_WCHAR* path);
 FX_BOOL FX_GetNextFile(void* handle,
@@ -19,7 +23,7 @@ FX_BOOL FX_GetNextFile(void* handle,
                        FX_BOOL& bFolder);
 void FX_CloseFolder(void* handle);
 FX_WCHAR FX_GetFolderSeparator();
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
 #define FX_FILESIZE int32_t
 #else
 #include <fcntl.h>

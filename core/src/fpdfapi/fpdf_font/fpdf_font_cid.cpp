@@ -892,22 +892,25 @@ FX_WCHAR CPDF_CIDFont::_UnicodeFromCharCode(FX_DWORD charcode) const {
   }
   return m_pCID2UnicodeMap->UnicodeFromCID(CIDFromCharCode(charcode));
 }
-FX_DWORD CPDF_CIDFont::_CharCodeFromUnicode(FX_WCHAR unicode) const {
-  switch (m_pCMap->m_Coding) {
-    case CIDCODING_UNKNOWN:
-      return 0;
-    case CIDCODING_UCS2:
-    case CIDCODING_UTF16:
-      return unicode;
-    case CIDCODING_CID: {
-      if (m_pCID2UnicodeMap == NULL || !m_pCID2UnicodeMap->IsLoaded()) {
-        return 0;
-      }
-      FX_DWORD CID = 0;
-      while (CID < 65536) {
-        FX_WCHAR this_unicode = m_pCID2UnicodeMap->UnicodeFromCID((FX_WORD)CID);
-        if (this_unicode == unicode) {
-          return CID;
+FX_WCHAR CPDF_CIDFont::_UnicodeFromCharCode(FX_DWORD charcode) const
+{
+    switch (m_pCMap->m_Coding) {
+        case CIDCODING_UCS2:
+        case CIDCODING_UTF16:
+            return (FX_WCHAR)charcode;
+        case CIDCODING_CID:
+            if (m_pCID2UnicodeMap == NULL || !m_pCID2UnicodeMap->IsLoaded()) {
+                return 0;
+            }
+            return m_pCID2UnicodeMap->UnicodeFromCID((FX_WORD)charcode);
+    }
+    if (!m_pCMap->IsLoaded() || m_pCID2UnicodeMap == NULL || !m_pCID2UnicodeMap->IsLoaded()) {
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
+        FX_WCHAR unicode;
+        int charsize = 1;
+        if (charcode > 255) {
+            charcode = (charcode % 256) * 256 + (charcode / 256);
+            charsize = 2;
         }
         CID++;
       }
@@ -921,7 +924,7 @@ FX_DWORD CPDF_CIDFont::_CharCodeFromUnicode(FX_WCHAR unicode) const {
   if (m_pCMap->m_Coding == CIDCODING_CID) {
     return 0;
   }
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
   uint8_t buffer[32];
   int ret =
       FXSYS_WideCharToMultiByte(g_CharsetCPs[m_pCMap->m_Coding], 0, &unicode, 1,

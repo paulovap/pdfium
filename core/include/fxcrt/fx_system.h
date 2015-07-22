@@ -116,7 +116,7 @@ typedef int FX_STRSIZE;
 // NOTE: prevent use of the return value from snprintf() since some platforms
 // have different return values (e.g. windows _vsnprintf()), and provide
 // versions that always NUL-terminate.
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ && _MSC_VER < 1900
+#if (_FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)) && _MSC_VER < 1900
 void FXSYS_snprintf(char* str,
                     size_t size,
                     _Printf_format_string_ const char* fmt,
@@ -313,8 +313,8 @@ int FXSYS_round(FX_FLOAT f);
 
 // Prevent a function from ever being inlined, typically because we'd
 // like it to appear in stack traces.
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
-#define NEVER_INLINE __declspec(noinline)
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
+#   define NEVER_INLINE __declspec(noinline)
 #else  // _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
 #define NEVER_INLINE __attribute__((__noinline__))
 #endif  // _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
