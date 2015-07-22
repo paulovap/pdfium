@@ -1,1 +1,1 @@
-For build instructions visit https://code.google.com/p/pdfium/wiki/Build
+This is just a mirror repo from google's pdfium. For QtPdfium go to [QtPdfium](https://github.com/paulovap/qtpdfium)
