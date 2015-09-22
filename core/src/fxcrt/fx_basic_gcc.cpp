@@ -88,7 +88,7 @@ const FX_CHAR* FXSYS_i64toa(int64_t value, FX_CHAR* str, int radix) {
 #ifdef __cplusplus
 }
 #endif
-#if _FXM_PLATFORM_ != _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ != _FXM_PLATFORM_WINDOWS_ && !defined(Q_OS_WIN)
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -113,7 +113,7 @@ FX_DWORD FXSYS_GetModuleFileName(void* hModule, char* buf, FX_DWORD bufsize) {
 }
 #endif
 #endif
-#if _FXM_PLATFORM_ != _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ != _FXM_PLATFORM_WINDOWS_ && !defined(Q_OS_WIN)
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -196,7 +196,7 @@ char* FXSYS_itoa(int value, char* string, int radix) {
 }
 #endif
 #endif
-#if _FXM_PLATFORM_ != _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ != _FXM_PLATFORM_WINDOWS_ && !defined(Q_OS_WIN)
 #ifdef __cplusplus
 extern "C" {
 #endif

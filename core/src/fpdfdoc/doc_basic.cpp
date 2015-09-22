@@ -250,7 +250,7 @@ CPDF_Array* CPDF_NameTree::LookupNamedDest(CPDF_Document* pDoc,
 }
 #if _FXM_PLATFORM_ == _FXM_PLATFORM_APPLE_ || \
     _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || \
-    || defined(Q_OS_WIN)
+    defined(Q_OS_WIN)
 static CFX_WideString ChangeSlashToPlatform(const FX_WCHAR* str) {
   CFX_WideString result;
   while (*str) {
