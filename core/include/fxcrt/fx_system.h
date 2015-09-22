@@ -23,7 +23,7 @@
 #define _FX_LINUX_DESKTOP_ 4
 #define _FX_MACOSX_ 7
 #define _FX_ANDROID_ 12
-#define _FX_QT_                69
+#define _FX_QT_ 69
 // _FXM_PLATFORM_ values;
 #define _FXM_PLATFORM_WINDOWS_ 1  // _FX_WIN32_DESKTOP_ or _FX_WIN64_DESKTOP_.
 #define _FXM_PLATFORM_LINUX_ 2    // _FX_LINUX_DESKTOP_ always.
