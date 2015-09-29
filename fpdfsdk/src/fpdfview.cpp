@@ -324,7 +324,7 @@ void DropContext(void* data) {
 #define DEBUG_TRACE
 #endif
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(Q_OS_WIN)
 DLLEXPORT void STDCALL FPDF_RenderPage(HDC dc,
                                        FPDF_PAGE page,
                                        int start_x,

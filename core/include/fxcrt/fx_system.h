@@ -57,7 +57,7 @@
 #error Sorry, can not figure out target OS. Please specify _FX_OS_ macro.
 #endif
 
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
 #define _CRT_SECURE_NO_WARNINGS
 #include <sal.h>
 #include <windows.h>
@@ -147,7 +147,7 @@ void FXSYS_vsnprintf(char* str, size_t size, const char* fmt, va_list ap);
 #define FXSYS_fprintf fprintf
 #define FXSYS_fflush fflush
 
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
 #ifdef _NATIVE_WCHAR_T_DEFINED
 #define FXSYS_wfopen(f, m) _wfopen((const wchar_t*)(f), (const wchar_t*)(m))
 #else
@@ -183,7 +183,7 @@ extern "C" {
 #define FXSYS_qsort qsort
 #define FXSYS_bsearch bsearch
 
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
 #define FXSYS_GetACP GetACP
 #define FXSYS_itoa _itoa
 #define FXSYS_strlwr _strlwr
@@ -236,7 +236,7 @@ wchar_t* FXSYS_wcslwr(wchar_t* str);
 wchar_t* FXSYS_wcsupr(wchar_t* str);
 #endif  // _FXM_PLATFORM == _FXM_PLATFORM_WINDOWS_
 
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
 #define FXSYS_pow(a, b) (FX_FLOAT) powf(a, b)
 #else
 #define FXSYS_pow(a, b) (FX_FLOAT) pow(a, b)
@@ -286,7 +286,7 @@ int FXSYS_round(FX_FLOAT f);
 //   printf("xyz: %" PRIuS, size);
 // The "u" in the macro corresponds to %u, and S is for "size".
 
-#if _FXM_PLATFORM_ != _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ != _FXM_PLATFORM_WINDOWS_ && !defined(Q_OS_WIN)
 
 #if (defined(_INTTYPES_H) || defined(_INTTYPES_H_)) && !defined(PRId64)
 #error "inttypes.h has already been included before this header file, but "

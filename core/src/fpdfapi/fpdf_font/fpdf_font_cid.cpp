@@ -921,7 +921,7 @@ FX_DWORD CPDF_CIDFont::_CharCodeFromUnicode(FX_WCHAR unicode) const {
   if (m_pCMap->m_Coding == CIDCODING_CID) {
     return 0;
   }
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || defined(Q_OS_WIN)
   uint8_t buffer[32];
   int ret =
       FXSYS_WideCharToMultiByte(g_CharsetCPs[m_pCMap->m_Coding], 0, &unicode, 1,
