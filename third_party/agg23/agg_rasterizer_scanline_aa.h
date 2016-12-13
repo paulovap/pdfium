@@ -29,12 +29,15 @@
 //----------------------------------------------------------------------------
 #ifndef AGG_RASTERIZER_SCANLINE_AA_INCLUDED
 #define AGG_RASTERIZER_SCANLINE_AA_INCLUDED
-#include "../../core/include/fxge/fx_ge.h"
-#include "agg_basics.h"
-#include "agg_math.h"
+
 #include "agg_array.h"
+#include "agg_basics.h"
 #include "agg_clip_liang_barsky.h"
+#include "agg_math.h"
 #include "agg_render_scanlines.h"
+#include "core/fxcrt/fx_coordinates.h"
+#include "core/fxcrt/fx_memory.h"
+
 namespace agg
 {
 enum poly_base_scale_e {
@@ -380,7 +383,7 @@ public:
         }
     }
     template<class VertexSource>
-    void add_path_transformed(VertexSource& vs, const CFX_AffineMatrix* pMatrix, unsigned path_id = 0)
+    void add_path_transformed(VertexSource& vs, const CFX_Matrix* pMatrix, unsigned path_id = 0)
     {
         FX_FLOAT x;
         FX_FLOAT y;

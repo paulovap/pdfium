@@ -107,7 +107,7 @@ void tcd_dump(FILE *fd, opj_tcd_t *tcd, opj_tcd_image_t * img) {
 /**
  * Initializes tile coding/decoding
  */
-static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no, OPJ_BOOL isEncoder, OPJ_FLOAT32 fraction, OPJ_SIZE_T sizeof_block);
+static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no, OPJ_BOOL isEncoder, OPJ_FLOAT32 fraction, OPJ_SIZE_T sizeof_block, opj_event_mgr_t* manager);
 
 /**
 * Allocates memory for a decoding code block.
@@ -146,13 +146,14 @@ static OPJ_BOOL opj_tcd_t2_decode ( opj_tcd_t *p_tcd,
                                     OPJ_BYTE * p_src_data,
                                     OPJ_UINT32 * p_data_read,
                                     OPJ_UINT32 p_max_src_size,
-                                    opj_codestream_index_t *p_cstr_index );
+                                    opj_codestream_index_t *p_cstr_index,
+                                    opj_event_mgr_t *p_manager);
 
 static OPJ_BOOL opj_tcd_t1_decode (opj_tcd_t *p_tcd);
 
 static OPJ_BOOL opj_tcd_dwt_decode (opj_tcd_t *p_tcd);
 
-static OPJ_BOOL opj_tcd_mct_decode (opj_tcd_t *p_tcd);
+static OPJ_BOOL opj_tcd_mct_decode (opj_tcd_t *p_tcd, opj_event_mgr_t *p_manager);
 
 static OPJ_BOOL opj_tcd_dc_level_shift_decode (opj_tcd_t *p_tcd);
 
@@ -267,7 +268,7 @@ void opj_tcd_makelayer( opj_tcd_t *tcd,
                                                                         n = passno + 1;
                                                                 continue;
                                                         }
-                                                        if (dd / dr >= thresh)
+                                                        if (thresh - (dd / dr) < DBL_EPSILON) /* do not rely on float equality, check with DBL_EPSILON margin */
                                                                 n = passno + 1;
                                                 }
 
@@ -655,7 +656,7 @@ OPJ_BOOL opj_alloc_tile_component_data(opj_tcd_tilecomp_t *l_tilec)
 
 /* ----------------------------------------------------------------------- */
 
-static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no, OPJ_BOOL isEncoder, OPJ_FLOAT32 fraction, OPJ_SIZE_T sizeof_block)
+static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no, OPJ_BOOL isEncoder, OPJ_FLOAT32 fraction, OPJ_SIZE_T sizeof_block, opj_event_mgr_t* manager)
 {
 	OPJ_UINT32 (*l_gain_ptr)(OPJ_UINT32) = 00;
 	OPJ_UINT32 compno, resno, bandno, precno, cblkno;
@@ -705,13 +706,20 @@ static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no,
 	l_tx0 = l_cp->tx0 + p * l_cp->tdx; /* can't be greater than l_image->x1 so won't overflow */
 	l_tile->x0 = (OPJ_INT32)opj_uint_max(l_tx0, l_image->x0);
 	l_tile->x1 = (OPJ_INT32)opj_uint_min(opj_uint_adds(l_tx0, l_cp->tdx), l_image->x1);
+	if (l_tile->x0 < 0 || l_tile->x1 < 0) {
+		return OPJ_FALSE;
+	}
+
 	l_ty0 = l_cp->ty0 + q * l_cp->tdy; /* can't be greater than l_image->y1 so won't overflow */
 	l_tile->y0 = (OPJ_INT32)opj_uint_max(l_ty0, l_image->y0);
 	l_tile->y1 = (OPJ_INT32)opj_uint_min(opj_uint_adds(l_ty0, l_cp->tdy), l_image->y1);
+	if (l_tile->y0 < 0 || l_tile->y1 < 0) {
+		return OPJ_FALSE;
+	}
 
 	/* testcase 1888.pdf.asan.35.988 */
 	if (l_tccp->numresolutions == 0) {
-		fprintf(stderr, "tiles require at least one resolution\n");
+		opj_event_msg(manager, EVT_ERROR, "tiles require at least one resolution\n");
 		return OPJ_FALSE;
 	}
 	/*fprintf(stderr, "Tile border = %d,%d,%d,%d\n", l_tile->x0, l_tile->y0,l_tile->x1,l_tile->y1);*/
@@ -726,17 +734,20 @@ static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no,
 		l_tilec->x1 = opj_int_ceildiv(l_tile->x1, (OPJ_INT32)l_image_comp->dx);
 		l_tilec->y1 = opj_int_ceildiv(l_tile->y1, (OPJ_INT32)l_image_comp->dy);
 		/*fprintf(stderr, "\tTile compo border = %d,%d,%d,%d\n", l_tilec->x0, l_tilec->y0,l_tilec->x1,l_tilec->y1);*/
-		
+		if (l_tilec->x0 >= l_tilec->x1 || l_tilec->y0 >= l_tilec->y1) {
+			opj_event_msg(manager, EVT_ERROR, "Invalid tile data\n");
+			return OPJ_FALSE;
+		}
 		/* compute l_data_size with overflow check */
 		l_data_size = (OPJ_UINT32)(l_tilec->x1 - l_tilec->x0);
 		if ((((OPJ_UINT32)-1) / l_data_size) < (OPJ_UINT32)(l_tilec->y1 - l_tilec->y0)) {
-			/* TODO event */
+			opj_event_msg(manager, EVT_ERROR, "Not enough memory for tile data\n");
 			return OPJ_FALSE;
 		}
 		l_data_size = l_data_size * (OPJ_UINT32)(l_tilec->y1 - l_tilec->y0);
 		
 		if ((((OPJ_UINT32)-1) / (OPJ_UINT32)sizeof(OPJ_UINT32)) < l_data_size) {
-			/* TODO event */
+			opj_event_msg(manager, EVT_ERROR, "Not enough memory for tile data\n");
 			return OPJ_FALSE;
 		}
 		l_data_size = l_data_size * (OPJ_UINT32)sizeof(OPJ_UINT32);
@@ -750,6 +761,7 @@ static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no,
 		
 		l_tilec->data_size_needed = l_data_size;
 		if (p_tcd->m_is_decoder && !opj_alloc_tile_component_data(l_tilec)) {
+			opj_event_msg(manager, EVT_ERROR, "Not enough memory for tile data\n");
 			return OPJ_FALSE;
 		}
 		
@@ -767,8 +779,7 @@ static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no,
 		else if (l_data_size > l_tilec->resolutions_size) {
 			opj_tcd_resolution_t* new_resolutions = (opj_tcd_resolution_t *) opj_realloc(l_tilec->resolutions, l_data_size);
 			if (! new_resolutions) {
-				/* opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to tile resolutions\n");                                                                                         */
-				fprintf(stderr, "Not enough memory to tile resolutions\n");
+				opj_event_msg(manager, EVT_ERROR, "Not enough memory for tile resolutions\n");
 				opj_free(l_tilec->resolutions);
 				l_tilec->resolutions = NULL;
 				l_tilec->resolutions_size = 0;
@@ -818,7 +829,14 @@ static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no,
 			l_res->ph = (l_res->y0 == l_res->y1) ? 0 : (OPJ_UINT32)((l_br_prc_y_end - l_tl_prc_y_start) >> l_pdy);
 			/*fprintf(stderr, "\t\t\tres_pw=%d, res_ph=%d\n", l_res->pw, l_res->ph );*/
 			
+			if (l_res->pw && ((OPJ_UINT32)-1) / l_res->pw < l_res->ph) {
+				return OPJ_FALSE;
+			}
 			l_nb_precincts = l_res->pw * l_res->ph;
+
+			if (((OPJ_UINT32)-1) / (OPJ_UINT32)sizeof(opj_tcd_precinct_t) < l_nb_precincts) {
+				return OPJ_FALSE;
+			}
 			l_nb_precinct_size = l_nb_precincts * (OPJ_UINT32)sizeof(opj_tcd_precinct_t);
 			if (resno == 0) {
 				tlcbgxstart = l_tl_prc_x_start;
@@ -861,10 +879,10 @@ static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no,
 					/* y0b = 1 if bandno = 2 or 3 */
 					l_y0b = (OPJ_INT32)((l_band->bandno)>>1);
 					/* l_band border (global) */
-					l_band->x0 = opj_int_ceildivpow2(l_tilec->x0 - (1 << l_level_no) * l_x0b, (OPJ_INT32)(l_level_no + 1));
-					l_band->y0 = opj_int_ceildivpow2(l_tilec->y0 - (1 << l_level_no) * l_y0b, (OPJ_INT32)(l_level_no + 1));
-					l_band->x1 = opj_int_ceildivpow2(l_tilec->x1 - (1 << l_level_no) * l_x0b, (OPJ_INT32)(l_level_no + 1));
-					l_band->y1 = opj_int_ceildivpow2(l_tilec->y1 - (1 << l_level_no) * l_y0b, (OPJ_INT32)(l_level_no + 1));
+					l_band->x0 = opj_int64_ceildivpow2(l_tilec->x0 - ((OPJ_INT64)l_x0b << l_level_no), (OPJ_INT32)(l_level_no + 1));
+					l_band->y0 = opj_int64_ceildivpow2(l_tilec->y0 - ((OPJ_INT64)l_y0b << l_level_no), (OPJ_INT32)(l_level_no + 1));
+					l_band->x1 = opj_int64_ceildivpow2(l_tilec->x1 - ((OPJ_INT64)l_x0b << l_level_no), (OPJ_INT32)(l_level_no + 1));
+					l_band->y1 = opj_int64_ceildivpow2(l_tilec->y1 - ((OPJ_INT64)l_y0b << l_level_no), (OPJ_INT32)(l_level_no + 1));
 				}
 				
 				/** avoid an if with storing function pointer */
@@ -886,8 +904,7 @@ static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no,
 					
 					opj_tcd_precinct_t * new_precincts = (opj_tcd_precinct_t *) opj_realloc(l_band->precincts,/*3 * */ l_nb_precinct_size);
 					if (! new_precincts) {
-						/* opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to handle band precints\n");                                                                    */
-						fprintf(stderr, "Not enough memory to handle band precints\n");
+						opj_event_msg(manager, EVT_ERROR, "Not enough memory to handle band precints\n");
 						opj_free(l_band->precincts);
 						l_band->precincts = NULL;
 						l_band->precincts_data_size = 0;
@@ -929,8 +946,15 @@ static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no,
 					l_current_precinct->cw = (OPJ_UINT32)((brcblkxend - tlcblkxstart) >> cblkwidthexpn);
 					l_current_precinct->ch = (OPJ_UINT32)((brcblkyend - tlcblkystart) >> cblkheightexpn);
 					
+					if (l_current_precinct->cw && ((OPJ_UINT32)-1) / l_current_precinct->cw < l_current_precinct->ch) {
+						return OPJ_FALSE;
+					}
 					l_nb_code_blocks = l_current_precinct->cw * l_current_precinct->ch;
 					/*fprintf(stderr, "\t\t\t\t precinct_cw = %d x recinct_ch = %d\n",l_current_precinct->cw, l_current_precinct->ch);      */
+					
+					if (((OPJ_UINT32)-1) / (OPJ_UINT32)sizeof_block < l_nb_code_blocks) {
+						return OPJ_FALSE;
+					}
 					l_nb_code_blocks_size = l_nb_code_blocks * (OPJ_UINT32)sizeof_block;
 					
 					if (! l_current_precinct->cblks.blocks) {
@@ -950,8 +974,7 @@ static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no,
 							opj_free(l_current_precinct->cblks.blocks);
 							l_current_precinct->cblks.blocks = NULL;
 							l_current_precinct->block_size = 0;
-							/* opj_event_msg(p_manager, EVT_ERROR, "Not enough memory for current precinct codeblock element\n");                                              */
-							fprintf(stderr, "Not enough memory for current precinct codeblock element\n");
+							opj_event_msg(manager, EVT_ERROR, "Not enough memory for current precinct codeblock element\n");
 							return OPJ_FALSE;
 						}
 						l_current_precinct->cblks.blocks = new_blocks;
@@ -965,34 +988,26 @@ static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no,
 					}
 					
 					if (! l_current_precinct->incltree) {
-						l_current_precinct->incltree = opj_tgt_create(l_current_precinct->cw,
-																													l_current_precinct->ch);
+						l_current_precinct->incltree = opj_tgt_create(l_current_precinct->cw, l_current_precinct->ch, manager);
 					}
 					else{
-						l_current_precinct->incltree = opj_tgt_init(l_current_precinct->incltree,
-																												l_current_precinct->cw,
-																												l_current_precinct->ch);
+						l_current_precinct->incltree = opj_tgt_init(l_current_precinct->incltree, l_current_precinct->cw, l_current_precinct->ch, manager);
 					}
 
 					if (! l_current_precinct->incltree)     {
-						fprintf(stderr, "WARNING: No incltree created.\n");
+						opj_event_msg(manager, EVT_WARNING, "No incltree created.\n");
 						/*return OPJ_FALSE;*/
 					}
 
 					if (! l_current_precinct->imsbtree) {
-						l_current_precinct->imsbtree = opj_tgt_create(
-																													l_current_precinct->cw,
-																													l_current_precinct->ch);
+						l_current_precinct->imsbtree = opj_tgt_create(l_current_precinct->cw, l_current_precinct->ch, manager);
 					}
 					else {
-						l_current_precinct->imsbtree = opj_tgt_init(
-																												l_current_precinct->imsbtree,
-																												l_current_precinct->cw,
-																												l_current_precinct->ch);
+						l_current_precinct->imsbtree = opj_tgt_init(l_current_precinct->imsbtree, l_current_precinct->cw, l_current_precinct->ch, manager);
 					}
 
 					if (! l_current_precinct->imsbtree) {
-						fprintf(stderr, "WARNING: No imsbtree created.\n");
+						opj_event_msg(manager, EVT_WARNING, "No imsbtree created.\n");
 						/*return OPJ_FALSE;*/
 					}
 
@@ -1045,14 +1060,14 @@ static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no,
 	return OPJ_TRUE;
 }
 
-OPJ_BOOL opj_tcd_init_encode_tile (opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no)
+OPJ_BOOL opj_tcd_init_encode_tile (opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no, opj_event_mgr_t* p_manager)
 {
-	return opj_tcd_init_tile(p_tcd, p_tile_no, OPJ_TRUE, 1.0F, sizeof(opj_tcd_cblk_enc_t));
+	return opj_tcd_init_tile(p_tcd, p_tile_no, OPJ_TRUE, 1.0F, sizeof(opj_tcd_cblk_enc_t), p_manager);
 }
 
-OPJ_BOOL opj_tcd_init_decode_tile (opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no)
+OPJ_BOOL opj_tcd_init_decode_tile (opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no, opj_event_mgr_t* p_manager)
 {
-	return opj_tcd_init_tile(p_tcd, p_tile_no, OPJ_FALSE, 0.5F, sizeof(opj_tcd_cblk_dec_t));
+	return opj_tcd_init_tile(p_tcd, p_tile_no, OPJ_FALSE, 0.5F, sizeof(opj_tcd_cblk_dec_t), p_manager);
 }
 
 /**
@@ -1089,7 +1104,7 @@ static OPJ_BOOL opj_tcd_code_block_enc_allocate_data (opj_tcd_cblk_enc_t * p_cod
 		if (p_code_block->data) {
 			opj_free(p_code_block->data - 1); /* again, why -1 */
 		}
-		p_code_block->data = (OPJ_BYTE*) opj_malloc(l_data_size);
+		p_code_block->data = (OPJ_BYTE*) opj_malloc(l_data_size+1);
 		if(! p_code_block->data) {
 			p_code_block->data_size = 0U;
 			return OPJ_FALSE;
@@ -1149,6 +1164,7 @@ OPJ_UINT32 opj_tcd_get_decoded_tile_size ( opj_tcd_t *p_tcd )
         opj_tcd_tilecomp_t * l_tile_comp = 00;
         opj_tcd_resolution_t * l_res = 00;
         OPJ_UINT32 l_size_comp, l_remaining;
+        OPJ_UINT32 l_temp;
 
         l_tile_comp = p_tcd->tcd_image->tiles->comps;
         l_img_comp = p_tcd->image->comps;
@@ -1166,7 +1182,18 @@ OPJ_UINT32 opj_tcd_get_decoded_tile_size ( opj_tcd_t *p_tcd )
                 }
 
                 l_res = l_tile_comp->resolutions + l_tile_comp->minimum_num_resolutions - 1;
-                l_data_size += l_size_comp * (OPJ_UINT32)((l_res->x1 - l_res->x0) * (l_res->y1 - l_res->y0));
+                l_temp = (OPJ_UINT32)((l_res->x1 - l_res->x0) * (l_res->y1 - l_res->y0)); /* x1*y1 can't overflow */
+
+                if (l_size_comp && ((OPJ_UINT32)-1) / l_size_comp < l_temp) {
+                        return (OPJ_UINT32)-1;
+                }
+                l_temp *= l_size_comp;
+
+                if (l_temp > ((OPJ_UINT32)-1) - l_data_size) {
+                        return (OPJ_UINT32)-1;
+                }
+                l_data_size += l_temp;
+
                 ++l_img_comp;
                 ++l_tile_comp;
         }
@@ -1266,7 +1293,8 @@ OPJ_BOOL opj_tcd_decode_tile(   opj_tcd_t *p_tcd,
                                 OPJ_BYTE *p_src,
                                 OPJ_UINT32 p_max_length,
                                 OPJ_UINT32 p_tile_no,
-                                opj_codestream_index_t *p_cstr_index
+                                opj_codestream_index_t *p_cstr_index,
+                                opj_event_mgr_t *p_manager
                                 )
 {
         OPJ_UINT32 l_data_read;
@@ -1299,7 +1327,7 @@ OPJ_BOOL opj_tcd_decode_tile(   opj_tcd_t *p_tcd,
         /*--------------TIER2------------------*/
         /* FIXME _ProfStart(PGROUP_T2); */
         l_data_read = 0;
-        if (! opj_tcd_t2_decode(p_tcd, p_src, &l_data_read, p_max_length, p_cstr_index))
+        if (! opj_tcd_t2_decode(p_tcd, p_src, &l_data_read, p_max_length, p_cstr_index, p_manager))
         {
                 return OPJ_FALSE;
         }
@@ -1328,7 +1356,7 @@ OPJ_BOOL opj_tcd_decode_tile(   opj_tcd_t *p_tcd,
         /*----------------MCT-------------------*/
         /* FIXME _ProfStart(PGROUP_MCT); */
         if
-                (! opj_tcd_mct_decode(p_tcd))
+                (! opj_tcd_mct_decode(p_tcd, p_manager))
         {
                 return OPJ_FALSE;
         }
@@ -1360,7 +1388,7 @@ OPJ_BOOL opj_tcd_update_tile_data ( opj_tcd_t *p_tcd,
         OPJ_UINT32 l_stride, l_width,l_height;
 
         l_data_size = opj_tcd_get_decoded_tile_size(p_tcd);
-        if (l_data_size > p_dest_length) {
+        if (l_data_size == (OPJ_UINT32)-1 || l_data_size > p_dest_length) {
                 return OPJ_FALSE;
         }
 
@@ -1462,7 +1490,7 @@ OPJ_BOOL opj_tcd_update_tile_data ( opj_tcd_t *p_tcd,
 
 
 
-void opj_tcd_free_tile(opj_tcd_t *p_tcd)
+static void opj_tcd_free_tile(opj_tcd_t *p_tcd)
 {
         OPJ_UINT32 compno, resno, bandno, precno;
         opj_tcd_tile_t *l_tile = 00;
@@ -1545,11 +1573,12 @@ void opj_tcd_free_tile(opj_tcd_t *p_tcd)
 }
 
 
-OPJ_BOOL opj_tcd_t2_decode (opj_tcd_t *p_tcd,
+static OPJ_BOOL opj_tcd_t2_decode (opj_tcd_t *p_tcd,
                             OPJ_BYTE * p_src_data,
                             OPJ_UINT32 * p_data_read,
                             OPJ_UINT32 p_max_src_size,
-                            opj_codestream_index_t *p_cstr_index
+                            opj_codestream_index_t *p_cstr_index,
+                            opj_event_mgr_t *p_manager
                             )
 {
         opj_t2_t * l_t2;
@@ -1566,7 +1595,8 @@ OPJ_BOOL opj_tcd_t2_decode (opj_tcd_t *p_tcd,
                                         p_src_data,
                                         p_data_read,
                                         p_max_src_size,
-                                        p_cstr_index)) {
+                                        p_cstr_index,
+                                        p_manager)) {
                 opj_t2_destroy(l_t2);
                 return OPJ_FALSE;
         }
@@ -1577,7 +1607,7 @@ OPJ_BOOL opj_tcd_t2_decode (opj_tcd_t *p_tcd,
         return OPJ_TRUE;
 }
 
-OPJ_BOOL opj_tcd_t1_decode ( opj_tcd_t *p_tcd )
+static OPJ_BOOL opj_tcd_t1_decode ( opj_tcd_t *p_tcd )
 {
         OPJ_UINT32 compno;
         opj_t1_t * l_t1;
@@ -1607,7 +1637,7 @@ OPJ_BOOL opj_tcd_t1_decode ( opj_tcd_t *p_tcd )
 }
 
 
-OPJ_BOOL opj_tcd_dwt_decode ( opj_tcd_t *p_tcd )
+static OPJ_BOOL opj_tcd_dwt_decode ( opj_tcd_t *p_tcd )
 {
         OPJ_UINT32 compno;
         opj_tcd_tile_t * l_tile = p_tcd->tcd_image->tiles;
@@ -1647,7 +1677,7 @@ OPJ_BOOL opj_tcd_dwt_decode ( opj_tcd_t *p_tcd )
 
         return OPJ_TRUE;
 }
-OPJ_BOOL opj_tcd_mct_decode ( opj_tcd_t *p_tcd )
+static OPJ_BOOL opj_tcd_mct_decode ( opj_tcd_t *p_tcd, opj_event_mgr_t *p_manager)
 {
         opj_tcd_tile_t * l_tile = p_tcd->tcd_image->tiles;
         opj_tcp_t * l_tcp = p_tcd->tcp;
@@ -1665,7 +1695,7 @@ OPJ_BOOL opj_tcd_mct_decode ( opj_tcd_t *p_tcd )
                 if ((l_tile->comps[0].x1 - l_tile->comps[0].x0) * (l_tile->comps[0].y1 - l_tile->comps[0].y0) < (OPJ_INT32)l_samples ||
                     (l_tile->comps[1].x1 - l_tile->comps[1].x0) * (l_tile->comps[1].y1 - l_tile->comps[1].y0) < (OPJ_INT32)l_samples ||
                     (l_tile->comps[2].x1 - l_tile->comps[2].x0) * (l_tile->comps[2].y1 - l_tile->comps[2].y0) < (OPJ_INT32)l_samples) {
-                        fprintf(stderr, "Tiles don't all have the same dimension. Skip the MCT step.\n");
+                        opj_event_msg(p_manager, EVT_ERROR, "Tiles don't all have the same dimension. Skip the MCT step.\n");
                         return OPJ_FALSE;
                 }
                 else if (l_tcp->mct == 2) {
@@ -1717,15 +1747,14 @@ OPJ_BOOL opj_tcd_mct_decode ( opj_tcd_t *p_tcd )
                 }
         }
         else {
-                /* FIXME need to use opj_event_msg function */
-                fprintf(stderr,"Number of components (%d) is inconsistent with a MCT. Skip the MCT step.\n",l_tile->numcomps);
+                opj_event_msg(p_manager, EVT_ERROR, "Number of components (%d) is inconsistent with a MCT. Skip the MCT step.\n",l_tile->numcomps);
         }
 
         return OPJ_TRUE;
 }
 
 
-OPJ_BOOL opj_tcd_dc_level_shift_decode ( opj_tcd_t *p_tcd )
+static OPJ_BOOL opj_tcd_dc_level_shift_decode ( opj_tcd_t *p_tcd )
 {
         OPJ_UINT32 compno;
         opj_tcd_tilecomp_t * l_tile_comp = 00;
@@ -1775,7 +1804,7 @@ OPJ_BOOL opj_tcd_dc_level_shift_decode ( opj_tcd_t *p_tcd )
                         for (j=0;j<l_height;++j) {
                                 for (i = 0; i < l_width; ++i) {
                                         OPJ_FLOAT32 l_value = *((OPJ_FLOAT32 *) l_current_ptr);
-                                        *l_current_ptr = opj_int_clamp((OPJ_INT32)lrintf(l_value) + l_tccp->m_dc_level_shift, l_min, l_max); ;
+                                        *l_current_ptr = opj_int_clamp((OPJ_INT32)opj_lrintf(l_value) + l_tccp->m_dc_level_shift, l_min, l_max); ;
                                         ++l_current_ptr;
                                 }
                                 l_current_ptr += l_stride;
@@ -1795,7 +1824,7 @@ OPJ_BOOL opj_tcd_dc_level_shift_decode ( opj_tcd_t *p_tcd )
 /**
  * Deallocates the encoding data of the given precinct.
  */
-void opj_tcd_code_block_dec_deallocate (opj_tcd_precinct_t * p_precinct)
+static void opj_tcd_code_block_dec_deallocate (opj_tcd_precinct_t * p_precinct)
 {
         OPJ_UINT32 cblkno , l_nb_code_blocks;
 
@@ -1833,7 +1862,7 @@ void opj_tcd_code_block_dec_deallocate (opj_tcd_precinct_t * p_precinct)
 /**
  * Deallocates the encoding data of the given precinct.
  */
-void opj_tcd_code_block_enc_deallocate (opj_tcd_precinct_t * p_precinct)
+static void opj_tcd_code_block_enc_deallocate (opj_tcd_precinct_t * p_precinct)
 {       
         OPJ_UINT32 cblkno , l_nb_code_blocks;
 
@@ -1894,7 +1923,7 @@ OPJ_UINT32 opj_tcd_get_encoded_tile_size ( opj_tcd_t *p_tcd )
         return l_data_size;
 }
                 
-OPJ_BOOL opj_tcd_dc_level_shift_encode ( opj_tcd_t *p_tcd )
+static OPJ_BOOL opj_tcd_dc_level_shift_encode ( opj_tcd_t *p_tcd )
 {
         OPJ_UINT32 compno;
         opj_tcd_tilecomp_t * l_tile_comp = 00;
@@ -1934,7 +1963,7 @@ OPJ_BOOL opj_tcd_dc_level_shift_encode ( opj_tcd_t *p_tcd )
         return OPJ_TRUE;
 }
 
-OPJ_BOOL opj_tcd_mct_encode ( opj_tcd_t *p_tcd )
+static OPJ_BOOL opj_tcd_mct_encode ( opj_tcd_t *p_tcd )
 {
         opj_tcd_tile_t * l_tile = p_tcd->tcd_image->tiles;
         opj_tcd_tilecomp_t * l_tile_comp = p_tcd->tcd_image->tiles->comps;
@@ -1989,7 +2018,7 @@ OPJ_BOOL opj_tcd_mct_encode ( opj_tcd_t *p_tcd )
         return OPJ_TRUE;
 }
 
-OPJ_BOOL opj_tcd_dwt_encode ( opj_tcd_t *p_tcd )
+static OPJ_BOOL opj_tcd_dwt_encode ( opj_tcd_t *p_tcd )
 {
         opj_tcd_tile_t * l_tile = p_tcd->tcd_image->tiles;
         opj_tcd_tilecomp_t * l_tile_comp = p_tcd->tcd_image->tiles->comps;
@@ -2015,7 +2044,7 @@ OPJ_BOOL opj_tcd_dwt_encode ( opj_tcd_t *p_tcd )
         return OPJ_TRUE;
 }
 
-OPJ_BOOL opj_tcd_t1_encode ( opj_tcd_t *p_tcd )
+static OPJ_BOOL opj_tcd_t1_encode ( opj_tcd_t *p_tcd )
 {
         opj_t1_t * l_t1;
         const OPJ_FLOAT64 * l_mct_norms;
@@ -2052,7 +2081,7 @@ OPJ_BOOL opj_tcd_t1_encode ( opj_tcd_t *p_tcd )
         return OPJ_TRUE;
 }
 
-OPJ_BOOL opj_tcd_t2_encode (opj_tcd_t *p_tcd,
+static OPJ_BOOL opj_tcd_t2_encode (opj_tcd_t *p_tcd,
                                                 OPJ_BYTE * p_dest_data,
                                                 OPJ_UINT32 * p_data_written,
                                                 OPJ_UINT32 p_max_dest_size,
@@ -2090,7 +2119,7 @@ OPJ_BOOL opj_tcd_t2_encode (opj_tcd_t *p_tcd,
 }
 
 
-OPJ_BOOL opj_tcd_rate_allocate_encode(  opj_tcd_t *p_tcd,
+static OPJ_BOOL opj_tcd_rate_allocate_encode(  opj_tcd_t *p_tcd,
                                                                             OPJ_BYTE * p_dest_data,
                                                                             OPJ_UINT32 p_max_dest_size,
                                                                             opj_codestream_info_t *p_cstr_info )
