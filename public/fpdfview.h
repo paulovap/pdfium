@@ -559,8 +559,7 @@ DLLEXPORT int STDCALL FPDF_GetPageSizeByIndex(FPDF_DOCUMENT document,
 // Set whether to render in a reverse Byte order, this flag is only used when
 // rendering to a bitmap.
 #define FPDF_REVERSE_BYTE_ORDER 0x10
-
-#ifdef _WIN32
+#if 0 //PV _WIN32
 // Function: FPDF_RenderPage
 //          Render contents of a page to a device (screen, bitmap, or printer).
 //          This function is only supported on Windows.
