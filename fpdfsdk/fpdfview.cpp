@@ -390,7 +390,7 @@ DLLEXPORT void STDCALL FPDF_DestroyLibrary() {
   IJS_Runtime::Destroy();
 }
 
-#ifndef _WIN32
+#ifndef _WIN32 && !defined(Q_OS_WIN)
 int g_LastError;
 void SetLastError(int err) {
   g_LastError = err;
@@ -429,7 +429,7 @@ DLLEXPORT void STDCALL FPDF_SetSandBoxPolicy(FPDF_DWORD policy,
   return FSDK_SetSandBoxPolicy(policy, enable);
 }
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(Q_OS_WIN)
 #if defined(PDFIUM_PRINT_TEXT_WITH_GDI)
 DLLEXPORT void STDCALL
 FPDF_SetTypefaceAccessibleFunc(PDFiumEnsureTypefaceCharactersAccessible func) {
