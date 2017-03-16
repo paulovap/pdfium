@@ -390,7 +390,7 @@ DLLEXPORT void STDCALL FPDF_DestroyLibrary() {
   IJS_Runtime::Destroy();
 }
 
-#ifndef _WIN32 && !defined(Q_OS_WIN)
+#ifndef _WIN32
 int g_LastError;
 void SetLastError(int err) {
   g_LastError = err;
@@ -648,7 +648,7 @@ DLLEXPORT double STDCALL FPDF_GetPageHeight(FPDF_PAGE page) {
   return pPage ? pPage->GetPageHeight() : 0.0;
 }
 
-#if defined(_WIN32)
+#if (defined(_WIN32) && !defined(Q_OS_WIN))
 DLLEXPORT void STDCALL FPDF_RenderPage(HDC dc,
                                        FPDF_PAGE page,
                                        int start_x,
