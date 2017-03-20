@@ -11,7 +11,7 @@
 #include "core/fxcrt/fx_string.h"
 #include "core/fxcrt/fx_system.h"
 
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || (_FXM_PLATFORM_ == _FXM_PLATFORM_QT_ && defined(Q_OS_WIN))
 #include <direct.h>
 
 class CFindFileDataA;
@@ -36,7 +36,7 @@ typedef CFindFileDataA FX_FileHandle;
 
 typedef DIR FX_FileHandle;
 #define FX_FILESIZE off_t
-#endif  // _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#endif  // _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || (_FXM_PLATFORM_ == _FXM_PLATFORM_QT_ && defined(Q_OS_WIN))
 
 FX_FileHandle* FX_OpenFolder(const FX_CHAR* path);
 bool FX_GetNextFile(FX_FileHandle* handle,
@@ -154,7 +154,7 @@ class IFX_FileAccess : public CFX_Retainable {
 };
 #endif  // PDF_ENABLE_XFA
 
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || (_FXM_PLATFORM_ == _FXM_PLATFORM_QT_ && defined(Q_OS_WIN))
 class CFindFileData {
  public:
   virtual ~CFindFileData() {}

@@ -127,7 +127,7 @@ FX_FLOAT FX_atof(const CFX_ByteStringC& strc) {
   return bNegative ? -value : value;
 }
 
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ && _MSC_VER < 1900
+#if (_FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || (_FXM_PLATFORM_ == _FXM_PLATFORM_QT_ && defined(Q_CC_MSVC))) && _MSC_VER < 1900
 void FXSYS_snprintf(char* str,
                     size_t size,
                     _Printf_format_string_ const char* fmt,
@@ -143,10 +143,10 @@ void FXSYS_vsnprintf(char* str, size_t size, const char* fmt, va_list ap) {
   if (size)
     str[size - 1] = 0;
 }
-#endif  // _FXM_PLATFORM_WINDOWS_ && _MSC_VER < 1900
+#endif  // (_FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || (_FXM_PLATFORM_ == _FXM_PLATFORM_QT_ && defined(Q_CC_MSVC))) && _MSC_VER < 1900
 
 FX_FileHandle* FX_OpenFolder(const FX_CHAR* path) {
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || (_FXM_PLATFORM_ == _FXM_PLATFORM_QT_ && defined(Q_OS_WIN))
   std::unique_ptr<CFindFileDataA> pData(new CFindFileDataA);
   pData->m_Handle = FindFirstFileExA((CFX_ByteString(path) + "/*.*").c_str(),
                                      FindExInfoStandard, &pData->m_FindData,
@@ -167,7 +167,7 @@ bool FX_GetNextFile(FX_FileHandle* handle,
   if (!handle)
     return false;
 
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || (_FXM_PLATFORM_ == _FXM_PLATFORM_QT_ && defined(Q_OS_WIN))
   if (handle->m_bEnd)
     return false;
 
@@ -194,7 +194,7 @@ void FX_CloseFolder(FX_FileHandle* handle) {
   if (!handle)
     return;
 
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || (_FXM_PLATFORM_ == _FXM_PLATFORM_QT_ && defined(Q_OS_WIN))
   FindClose(handle->m_Handle);
   delete handle;
 #else
@@ -203,7 +203,7 @@ void FX_CloseFolder(FX_FileHandle* handle) {
 }
 
 FX_WCHAR FX_GetFolderSeparator() {
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || (_FXM_PLATFORM_ == _FXM_PLATFORM_QT_ && defined(Q_OS_WIN))
   return '\\';
 #else
   return '/';
