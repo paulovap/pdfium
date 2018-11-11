@@ -7,7 +7,7 @@
 #ifndef CORE_FXGE_CFX_WINDOWSDEVICE_H_
 #define CORE_FXGE_CFX_WINDOWSDEVICE_H_
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__QT__)
 #ifndef _WINDOWS_
 #include <windows.h>
 #endif
@@ -37,6 +37,6 @@ class CFX_WindowsDevice : public CFX_RenderDevice {
   HDC GetDC() const;
 };
 
-#endif  // _WIN32
+#endif  //defined(_WIN32) && !defined(__QT__)
 
 #endif  // CORE_FXGE_CFX_WINDOWSDEVICE_H_

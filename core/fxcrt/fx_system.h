@@ -58,7 +58,7 @@
 #error Sorry, can not figure out target OS. Please specify _FX_OS_ macro.
 #endif
 
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || (_FXM_PLATFORM_ == _FXM_PLATFORM_QT_ && (_WIN32 || _WIN64))
 #include <windows.h>
 #include <sal.h>
 #endif
@@ -325,7 +325,7 @@ int FXSYS_round(FX_FLOAT f);
 
 // Prevent a function from ever being inlined, typically because we'd
 // like it to appear in stack traces.
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || (_FXM_PLATFORM_ == _FXM_PLATFORM_QT_ && defined(Q_CC_MSVC))
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || (_FXM_PLATFORM_ == _FXM_PLATFORM_QT_ && (_WIN32 || _WIN64))
 #define NEVER_INLINE __declspec(noinline)
 #else  // _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
 #define NEVER_INLINE __attribute__((__noinline__))

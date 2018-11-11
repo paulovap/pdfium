@@ -44,7 +44,7 @@
 #include "xfa/fxbarcode/BC_Library.h"
 #endif  // PDF_ENABLE_XFA
 
-#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_ || (_FXM_PLATFORM_ == _FXM_PLATFORM_QT_ && (_WIN32 || _WIN64))
 #include "core/fxge/cfx_windowsdevice.h"
 #endif
 
@@ -429,7 +429,7 @@ DLLEXPORT void STDCALL FPDF_SetSandBoxPolicy(FPDF_DWORD policy,
   return FSDK_SetSandBoxPolicy(policy, enable);
 }
 
-#if defined(_WIN32) && !defined(Q_OS_WIN)
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
 #if defined(PDFIUM_PRINT_TEXT_WITH_GDI)
 DLLEXPORT void STDCALL
 FPDF_SetTypefaceAccessibleFunc(PDFiumEnsureTypefaceCharactersAccessible func) {
@@ -648,7 +648,7 @@ DLLEXPORT double STDCALL FPDF_GetPageHeight(FPDF_PAGE page) {
   return pPage ? pPage->GetPageHeight() : 0.0;
 }
 
-#if (defined(_WIN32) && !defined(Q_OS_WIN))
+#if _FXM_PLATFORM_ == _FXM_PLATFORM_WINDOWS_
 DLLEXPORT void STDCALL FPDF_RenderPage(HDC dc,
                                        FPDF_PAGE page,
                                        int start_x,
